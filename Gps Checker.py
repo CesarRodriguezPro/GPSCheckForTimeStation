@@ -33,13 +33,11 @@ def importing_gps_data():
 
     ''' the data imported from the Locations.txt comes in the following format:
 
-    - > location_name : (decimal degrees, decimal degrees)
+    location_name : (decimal degrees, decimal degrees)
 
-    and normally take the coordinates for my jobsites from a website like
-    https://www.gps-coordinates.net/
-    please note that this script uses the line divider('\n') as a way to check for independent blocks of address.
-     also you going to need the exactly the same name as the timestation has it for each location.'''
-
+    and normally take the coordinates for my Location.txt from a website like https://www.gps-coordinates.net/
+    please note that this script uses the line divider('\n') as a way to check for independent blocks of Gps Coordinates.
+    make sure that the names in location.txt are a exact match with the names that timestation has on their servers.'''
 
     pair_gps_values = {}
     for items in real_gps_locations.split('\n'):
@@ -71,8 +69,8 @@ def get_data():
 def from_str_to_gps(gps):
 
     ''' when converting the database to dict, the values was given to me in str, normally that is not a problems
-    but the string has spaces and additional characters  that make geopy raise error, this funtions will clean the str and
-    send it as a tuple '''
+    but the string has spaces and additional characters  that make geopy raise error, this funtions will clean the str
+    and send it as a tuple '''
 
     clean_gps = gps.strip().replace('(', '').replace(')', '').replace(',', ' ').split()
 
