@@ -82,19 +82,26 @@ def main_func_gps():
     locations = importing_gps_data()
     server_data = csv_data.to_dict('index')
 
+
     ######## index for display #########################################################################################
-    print(" \n\n |{:^11}|{:^30}|{:^25}|{:^30}|{:^8}|{:^10}|{:^10}|".format('Date', 'Name', 'Department', 'Device', 'Time', 'Activity', 'Distance'))
-    print('-'*121)
+    print(" \n\n |{:4}|{:^11}|{:^30}|{:^25}|{:^30}|{:^8}|{:^10}|{:^10}|"
+          .format('#', 'Date', 'Name', 'Department', 'Device', 'Time', 'Activity', 'Distance'))
+    print('-'*145)
     ####################################################################################################################
 
+
+    num = 1
     for i in server_data.values():
+
         try:
             if i['Department'] in locations.keys():
                 source, sourceL = from_str_to_gps(locations[i['Department']])
                 total_distance = check_distance((source, sourceL), (i['Latitude'], i['Longitude']))
 
                 if total_distance >= int(distance_):
-                    print(f" |{i['Date']:11}|{i['Name']:30}|{i['Department']:25}|{i['Device']:30}|{i['Time']:8}|{i['Activity']:10}|{total_distance:10.2f}|")
+
+                    print(f" |{num:<4}|{i['Date']:11}|{i['Name']:30}|{i['Department']:25}|{i['Device']:30}|{i['Time']:8}|{i['Activity']:10}|{total_distance:10.2f}|")
+                    num += 1
 
         except:
             pass
