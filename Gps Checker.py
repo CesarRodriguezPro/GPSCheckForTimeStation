@@ -1,18 +1,18 @@
 from geopy.distance import distance
 import pandas as pd
 import optparse
+import os
 
 
 
 #####################################################################################
 #  API information , key and code to import information from TIMESTATION.COM
 CODE = 34
-with open('Api_key.txt', 'r') as file_open:
-    key_api = file_open.read()
-
+key_api = os.environ.get('TimeStation_key')
+dir_path = os.path.abspath(os.path.dirname(__file__))
 
 # Information for the location with GPS Coordinates
-with open('location.txt', 'r') as dest_file:
+with open(os.path.join(dir_path, 'location.txt'), 'r') as dest_file:
     real_gps_locations = dest_file.read()
 ####################################################################################
 
