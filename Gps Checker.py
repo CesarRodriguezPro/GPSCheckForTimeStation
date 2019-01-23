@@ -47,7 +47,6 @@ def importing_gps_data():
 
 
 def check_distance(original, destino):
-
     ''' using geopy i calculate the distance in Feets and return the answer.'''
 
     dist = distance(original, destino).feet
@@ -55,26 +54,21 @@ def check_distance(original, destino):
 
 
 def get_data():
-
     ''' this grap the data from the website and download as a csv file and upload it in to a pandas dataframe'''
 
-    raw_data = f"https://api.mytimestation.com/v0.1/reports/?api_key={key_api}" \
-        f"&Report_StartDate={date1}&Report_EndDate={date2}&id={CODE}&exportformat=csv"
-    csv_data = pd.read_csv(raw_data)
-
-    # csv_data = pd.read_csv('out.csv')
-    return csv_data
-
+    url = f"https://api.mytimestation.com/v0.1/reports/?api_key={key_api}&Report_StartDate={date1}&Report_EndDate={date2}&id={CODE}&exportformat=csv"
+    raw_data = pd.read_csv(url)
+    return raw_data
+    
 
 def from_str_to_gps(gps):
 
     ''' when converting the database to dict, the values was given to me in str, normally that is not a problems
     but the string has spaces and additional characters  that make geopy raise error, this funtions will clean the str
-    and send it as a tuple '''
-
+    and send it clean '''
+    
     clean_gps = gps.strip().replace('(', '').replace(')', '').replace(',', ' ').split()
-
-    return clean_gps[0], clean_gps[1]
+    return clean_gps[0], clean_gps[1]  # return Latitud and longitud
 
 
 def main_func_gps():
@@ -91,16 +85,14 @@ def main_func_gps():
 
 
     num = 1
-    for i in server_data.values():
+    for server_items in server_data.values():
 
         try:
-            if i['Department'] in locations.keys():
-                source, sourceL = from_str_to_gps(locations[i['Department']])
-                total_distance = check_distance((source, sourceL), (i['Latitude'], i['Longitude']))
-
+            if server_items['Department'] in locations.keys():
+                source_latitude, source_longitude= from_str_to_gps(locations[server_items['Department']])
+                total_distance = check_distance((source_latitude, source_longitude), (server_items['Latitude'], server_items['Longitude']))
                 if total_distance >= int(distance_):
-
-                    print(f" |{num:<4}|{i['Date']:11}|{i['Name']:30}|{i['Department']:25}|{i['Device']:30}|{i['Time']:8}|{i['Activity']:10}|{total_distance:10.2f}|")
+                    print(f" |{num:<4}|{server_items['Date']:11}|{server_items['Name']:30}|{server_items['Department']:25}|{server_items['Device']:30}|{server_items['Time']:8}|{server_items['Activity']:10}|{total_distance:10.2f}|")
                     num += 1
 
         except:
@@ -110,5 +102,4 @@ def main_func_gps():
 if __name__ == '__main__':
 
     main_func_gps()
-
 
