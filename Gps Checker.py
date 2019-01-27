@@ -1,19 +1,21 @@
-from geopy.distance import distance
 import pandas as pd
-import optparse
+from geopy import distance
+import warnings
 import os
+import optparse
+warnings.simplefilter(action='ignore', category=UserWarning)
 
+''' this program uses the api from timestation to get the imformation of the gps  and comparate to
+a list a gps list of current location around the city
+i created  the this to verify that our workers clock in around the jobsites that they are say they are
 
+'''
 
 #####################################################################################
 #  API information , key and code to import information from TIMESTATION.COM
 CODE = 34
 key_api = os.environ.get('TimeStation_key')
 dir_path = os.path.abspath(os.path.dirname(__file__))
-
-# Information for the location with GPS Coordinates
-with open(os.path.join(dir_path, 'location.txt'), 'r') as dest_file:
-    real_gps_locations = dest_file.read()
 ####################################################################################
 
 
@@ -22,98 +24,86 @@ parser = optparse.OptionParser()
 parser.add_option('-i', "--start", dest="date_start", help="the starting date of the search in this format 'yyyy-mm-dd'")
 parser.add_option('-f', "--end", dest="date_end", help="the last date of the search in this format 'yyyy-mm-dd'")
 parser.add_option('-d', "--distance", dest="distance_val", help="the distance from the center location")
+parser.add_option('-n', "--name", dest="name_val", help="search for name")
 parser.add_option('-p', "--print", dest='print_value', help='this will print the result in a csv file' )
 (options, arguments) = parser.parse_args()
 
 date1 = options.date_start
 date2 = options.date_end
-distance_ = options.distance_val
-print_result = options.print_value
-save_to_print = os.path.join(dir_path, 'result.txt')  # where items to print will be save
+distance_ = int(options.distance_val) if options.distance_val else 0 
+name_ = options.name_val if options.name_val else ""
+print_answer = True if options.print_value and options.print_value =='true' else False
+
+save_to_print = os.path.join(dir_path, 'result.csv') 
+CSV_FILE_PATH =  f"https://api.mytimestation.com/v0.1/reports/?api_key={key_api}&Report_StartDate={date1}&Report_EndDate={date2}&id={CODE}&exportformat=csv"
 
 
-def importing_gps_data():
+class GPSTracker:
+    '''this class take a csv file form timestation and take the information for the gps location and comparate to a list o locations that is save in a file call "location.txt"
+    the main idea is to check if employees clock in in the close range of the location the presume clock in. '''
+   
+    def __init__(self, load_data, distance_apart=0, name=''):
+        self.user_distance = distance_apart
+        self.name = name
+        self.load_data = load_data
 
-    ''' the data imported from the Locations.txt comes in the following format:
+        self.base_locations = {}
+        with open(os.path.join(dir_path,'location.txt'), 'r') as self.file:
+            self.base_data = self.file.read()
+            self.location_list = (stuff for stuff in self.base_data.strip().split('\n'))
+            for self.single_location in self.location_list:
+                self.single_location = self.single_location.split(':')
+                self.cord = self.single_location[1].lstrip().strip().replace('(', '').replace(")", '').split(',')
+                self.base_locations[self.single_location[0]] = (self.cord[0], self.cord[1])
 
-    location_name : (decimal degrees, decimal degrees)
+    def process_data(self):
+        print('Start Processing Data From csv File\n')
+        data = self.get_data()
+        data['Latitude'].fillna(0)
+        data['Longitude'].fillna(0)
+        data['GPS_data'] = list(zip(data.Latitude, data.Longitude))
+        data['baseGps'] = data['Department'].apply(self.find_deparment_gps)
+        data['distance'] = data.apply(self.get_distance, axis=1)
+        after_distance = data[data['distance'] > self.user_distance]
+        after_name = after_distance[data['Name'].str.contains(self.name)]
+        after_name.index = after_name.index + 1
+        return after_name[['Date', 'Name', 'Department', 'Device', 'Time', 'Activity', 'distance']]
 
-    and normally take the coordinates for my Location.txt from a website like https://www.gps-coordinates.net/
-    please note that this script uses the line divider('\n') as a way to check for independent blocks of Gps Coordinates.
-    make sure that the names in location.txt are a exact match with the names that timestation has on their servers.'''
+    def display_information(self):
+        data_display = self.process_data()
+        data_d = data_display.to_dict(orient='index')
+        ready_display = (item for item in data_d.values())
+        print(f"|{'#':^5}|{'Date':12}|{'Name':30}|{'Department':24}|{'Device':20}|{'Time':7}|{'Activity':10}|{'distance':8}|")
+        print("-"*126)
+        n = 1
+        for i in ready_display:
+            print(f"|{n:^5}|{i['Date']:12}|{i['Name']:30}|{i['Department']:24}|{i['Device']:20}|{i['Time']:7}|{i['Activity']:10}|{i['distance']:8.2f}|")
+            n += 1
+        print('\n finish sorting data')
 
-    pair_gps_values = {}
-    for items in real_gps_locations.split('\n'):
-        item = items.split(':')
-        pair_gps_values[item[0]] = item[1]
-    return pair_gps_values
+    def export_to_csv(self,path):
+        self.process_data().to_csv(path)
+        os.startfile(path)
+        print('finish exporting.')
 
+    def get_data(self):
+        raw_data = pd.read_csv(self.load_data)
+        selected_data = raw_data[['Date', 'Name', 'Department', 'Device', 'Time', 'Activity', 'Latitude', 'Longitude']]
+        return selected_data
 
-def check_distance(original, destino):
-    ''' using geopy i calculate the distance in Feets and return the answer.'''
+    def find_deparment_gps(self, department):
+        return self.base_locations.get(department, (0, 0))
 
-    dist = distance(original, destino).feet
-    return dist
-
-
-def get_data():
-    ''' this grap the data from the website and download as a csv file and upload it in to a pandas dataframe'''
-
-    url = f"https://api.mytimestation.com/v0.1/reports/?api_key={key_api}&Report_StartDate={date1}&Report_EndDate={date2}&id={CODE}&exportformat=csv"
-    raw_data = pd.read_csv(url)
-    return raw_data
-    
-
-def from_str_to_gps(gps):
-
-    ''' when converting the database to dict, the values was given to me in str, normally that is not a problems
-    but the string has spaces and additional characters  that make geopy raise error, this funtions will clean the str
-    and send it clean '''
-    
-    clean_gps = gps.strip().replace('(', '').replace(')', '').replace(',', ' ').split()
-    return clean_gps[0], clean_gps[1]  # return Latitud and longitud
-
-
-def main_func_gps():
-
-    def print_values_to_csv(values_to_print):
-        with open(save_to_print, 'w') as csvfile:
-            csvfile.write( f"|{'#':4}|{'Date':^11}|{'Name':^30}|{'Department':^25}|{'Device':^30}|{'Time':^8}|{'Activity':^10}|{'Distance':^10}| \n")
-            csvfile.write('-'*145 +'\n' )
-            for values in values_to_print:
-                csvfile.write(f"|{values[0]:<4}|{values[1]:11}|{values[2]:30}|{values[3]:25}|{values[4]:30}|{values[5]:8}|{values[6]:10}|{values[7]:10.2f}|\n")
-
-    ######## index for display #########################################################################################
-    print(" \n\n |{:4}|{:^11}|{:^30}|{:^25}|{:^30}|{:^8}|{:^10}|{:^10}|"
-          .format('#', 'Date', 'Name', 'Department', 'Device', 'Time', 'Activity', 'Distance'))
-    print('-'*145)
-    ####################################################################################################################
-    
-    csv_data = get_data()
-    locations = importing_gps_data()
-    server_data = csv_data.to_dict('index') 
-    
-    values_to_print = []
-    num = 1
-    for server_items in server_data.values():
+    def get_distance(self, value):
         try:
-            if server_items['Department'] in locations.keys():
-                source_latitude, source_longitude= from_str_to_gps(locations[server_items['Department']])
-                total_distance = check_distance((source_latitude, source_longitude), (server_items['Latitude'], server_items['Longitude']))
-                if total_distance >= int(distance_):
-                    print(f" |{num:<4}|{server_items['Date']:11}|{server_items['Name']:30}|{server_items['Department']:25}|{server_items['Device']:30}|{server_items['Time']:8}|{server_items['Activity']:10}|{total_distance:10.2f}|")
-                    values_to_print.append([num, server_items['Date'], server_items['Name'], server_items['Department'], server_items['Device'], server_items['Time'], server_items['Activity'], total_distance])
-                    num += 1
+            return distance.distance(value[8], value[9]).miles
         except:
-            pass
-        
-        finally:
-            if print_result and print_result.lower() == 'true':
-                print_values_to_csv(values_to_print=values_to_print)
+            return 0
 
-
+   
 if __name__ == '__main__':
-
-    main_func_gps()
-    
-
+    os.system('cls')
+    print(f'\n[+]---- >  stating date {date1}, end date {date2} ,  distance -> {distance_} Miles, search for {name_} \n')
+    print('-'*127)
+    active = GPSTracker(load_data=CSV_FILE_PATH, distance_apart=distance_, name=name_)
+    active.export_to_csv(save_to_print) if print_answer == True else active.display_information()
