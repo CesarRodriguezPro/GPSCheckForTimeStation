@@ -30,7 +30,7 @@ parser.add_option('-p', "--print", dest='print_value', help='this will print the
 
 date1 = options.date_start
 date2 = options.date_end
-distance_ = int(options.distance_val) if options.distance_val else 0 
+distance_ = float(options.distance_val) if options.distance_val else 0 
 name_ = options.name_val if options.name_val else ""
 print_answer = True if options.print_value and options.print_value =='true' else False
 
