@@ -7,7 +7,7 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 
 ''' this program uses the api from timestation to get the imformation of the gps  and comparate to
 a list a gps list of current location around the city
-i created  the this to verify that our workers clock in around the jobsites that they are say they are
+i created this to verify that our workers clock in around the jobsites that they are say they are
 
 '''
 
